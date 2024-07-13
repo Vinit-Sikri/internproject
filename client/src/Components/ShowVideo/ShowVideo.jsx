@@ -11,7 +11,7 @@ function ShowVideo({ vid }) {
     normalizedFilePath = '/' + normalizedFilePath;
   }
 
-  const videoURL = `https://youtube-clone-53sz.onrender.com${normalizedFilePath}`;
+  const videoURL = `https://internproject-yzv8.onrender.com${normalizedFilePath}`;
 
   return (
     <>

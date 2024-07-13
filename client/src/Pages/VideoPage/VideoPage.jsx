@@ -125,7 +125,7 @@ function VideoPage() {
           <div className="video_display_screen_videoPage">
             <video
               ref={videoRef}
-              src={`https://youtube-clone-53sz.onrender.com/${vv?.filePath}`}
+              src={`https://internproject-yzv8.onrender.com/${vv?.filePath}`}
               className={"video_ShowVideo_videoPage"}
               controls
             />
