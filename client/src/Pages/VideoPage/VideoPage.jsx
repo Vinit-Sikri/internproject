@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Comments from "../../Components/Comments/Comments";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,22 +25,22 @@ function VideoPage() {
   const nextVideoIndex = (currentVideoIndex + 1) % vids.data.length;
   const nextVideo = vids.data[nextVideoIndex];
 
-  const handleHistory = () => {
+  const handleHistory = useCallback(() => {
     dispatch(
       addToHistory({
         videoId: vid,
         Viewer: CurrentUser?.result._id,
       })
     );
-  };
+  }, [dispatch, vid, CurrentUser?.result._id]);
 
-  const handleViews = () => {
+  const handleViews = useCallback(() => {
     dispatch(
       viewVideo({
         id: vid,
       })
     );
-  };
+  }, [dispatch, vid]);
 
   useEffect(() => {
     if (CurrentUser) {
@@ -51,7 +51,7 @@ function VideoPage() {
         setPointsUpdated(true);
       }
     }
-  }, [CurrentUser, vid, dispatch, pointsUpdated]);
+  }, [CurrentUser, vid, dispatch, pointsUpdated, handleHistory, handleViews]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -71,12 +71,9 @@ function VideoPage() {
           videoRef.current.currentTime -= 10;
         } else if (event.key === "c") {
           commentSectionRef.current.focus();
-        } 
-        else if(event.key==='x'){
-            alert("Window cannot be Closed due to Current Browser Settings")
-        }
-        
-        else if (event.key === "l") {
+        } else if (event.key === "x") {
+          alert("Window cannot be closed due to current browser settings");
+        } else if (event.key === "l") {
           navigator.geolocation.getCurrentPosition((position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
@@ -128,8 +125,7 @@ function VideoPage() {
           <div className="video_display_screen_videoPage">
             <video
               ref={videoRef}
-              //src={`http://localhost:5500/${vv?.filePath}`}
-              src = {`https://youtube-clone-53sz.onrender.com/${vv?.filePath}`}
+              src={`https://youtube-clone-53sz.onrender.com/${vv?.filePath}`}
               className={"video_ShowVideo_videoPage"}
               controls
             />

@@ -16,8 +16,8 @@ import {
   stopRecording as stopRecordingAPI, 
   startScreenShare as startScreenShareAPI, 
   stopScreenShare as stopScreenShareAPI, 
-  initiateCall as initiateCallAPI, 
-  answerCall as answerCallAPI, 
+ // initiateCall as initiateCallAPI, 
+ // answerCall as answerCallAPI, 
   endCall as endCallAPI 
 } from "../../api/index"; 
 

@@ -44,7 +44,7 @@ function LikeWatchLaterSaveBtns({ vv, vid }) {
         (q) => q?.videoId === vid && q?.Viewer === CurrentUser?.result._id
       )
       .map((m) => setSAveVideo(true));
-  }, []);
+  }, [CurrentUser?.result._id, likedVideoList?.data, vid, watchLaterList?.data]);
 
   const toggleSavedVideo = () => {
     if (CurrentUser) {

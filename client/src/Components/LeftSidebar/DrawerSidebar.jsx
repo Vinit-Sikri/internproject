@@ -43,6 +43,7 @@ function DrawerSidebar({ toggleDrawer,toggleDrawerSidebar }) {
               <img
                 src={shorts}
                 width={22}
+                alt="//"
                 className={"icon_sidebar"}
                 style={{ margin: "auto 0.7rem" }}
               />
