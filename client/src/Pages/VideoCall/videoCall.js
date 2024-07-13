@@ -2,18 +2,26 @@ import React, { useEffect, useRef, useState } from "react";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import Peer from "simple-peer";
 import io from "socket.io-client";
-import Button from "@material-ui/core/Button";
-import IconButton from "@material-ui/core/IconButton";
-import TextField from "@material-ui/core/TextField";
-import AssignmentIcon from "@material-ui/icons/Assignment";
-import PhoneIcon from "@material-ui/icons/Phone";
-import ScreenShareIcon from "@material-ui/icons/ScreenShare";
-import VideocamIcon from "@material-ui/icons/Videocam";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import PhoneIcon from "@mui/icons-material/Phone";
+import ScreenShareIcon from "@mui/icons-material/ScreenShare";
+import VideocamIcon from "@mui/icons-material/Videocam"; // Use the correct icon
+import StopIcon from "@mui/icons-material/Stop";
 import "./videoCall.css";
+import { 
+  startRecording as startRecordingAPI, 
+  stopRecording as stopRecordingAPI, 
+  startScreenShare as startScreenShareAPI, 
+  stopScreenShare as stopScreenShareAPI, 
+  initiateCall as initiateCallAPI, 
+  answerCall as answerCallAPI, 
+  endCall as endCallAPI 
+} from "../../api/index"; 
 
-//const socket = io.connect("http://localhost:5000");
 const socket = io.connect("https://youtube-clone-53sz.onrender.com");
-
 
 function Videocall() {
   const [me, setMe] = useState("");
@@ -42,7 +50,6 @@ function Videocall() {
       if (myVideo.current) {
         myVideo.current.srcObject = stream;
       }
-      // Add local video and audio to the combined stream
       stream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
     });
 
@@ -87,9 +94,7 @@ function Videocall() {
       if (userVideo.current) {
         userVideo.current.srcObject = userStream;
       }
-      // Add remote video and audio to the combined stream
       userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
-      // Create a new MediaStream for recording
       recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
       recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
     });
@@ -115,85 +120,97 @@ function Videocall() {
       if (userVideo.current) {
         userVideo.current.srcObject = userStream;
       }
-      // Add remote video and audio to the combined stream
       userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
-      // Create a new MediaStream for recording
       recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
       recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
     });
 
     peer.signal(callerSignal);
     connectionRef.current = peer;
-};
+  };
 
   const leaveCall = () => {
     setCallEnded(true);
     connectionRef.current.destroy();
+    endCallAPI({ userId: me }); // Notify the server about ending the call
   };
 
   const handleCopy = () => {
     console.log("ID copied to clipboard: ", me);
   };
 
-  const startScreenShare = () => {
-    navigator.mediaDevices.getDisplayMedia({ cursor: true }).then((screenStream) => {
+  const startScreenShare = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ cursor: true });
       setScreenSharing(true);
       const screenTrack = screenStream.getTracks()[0];
-      connectionRef.current.replaceTrack(
-        stream.getVideoTracks()[0],
-        screenTrack,
-        stream
-      );
+      connectionRef.current.replaceTrack(stream.getVideoTracks()[0], screenTrack, stream);
       screenTrack.onended = () => {
         stopScreenShare();
       };
-      // Add screen share video to the combined stream
       combinedStream.current.addTrack(screenTrack);
       recordedStream.current.addTrack(screenTrack);
-    });
-  };
 
-  const stopScreenShare = () => {
-    setScreenSharing(false);
-    const videoTrack = stream.getVideoTracks()[0];
-    connectionRef.current.replaceTrack(
-      connectionRef.current.streams[0].getVideoTracks()[0],
-      videoTrack,
-      stream
-    );
-    // Remove screen share video from the combined stream
-    combinedStream.current.getVideoTracks().forEach((track) => {
-      if (track.kind === "video" && track.label.includes("screen")) {
-        combinedStream.current.removeTrack(track);
-        track.stop();
-      }
-    });
-    recordedStream.current.getVideoTracks().forEach((track) => {
-      if (track.kind === "video" && track.label.includes("screen")) {
-        recordedStream.current.removeTrack(track);
-        track.stop();
-      }
-    });
-  };
-
-  const startRecording = () => {
-    if (recordedStream.current) {
-      const recorder = new MediaRecorder(recordedStream.current);
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setRecordedChunks((prev) => [...prev, event.data]);
-        }
-      };
-      setMediaRecorder(recorder);
-      recorder.start();
-      setRecording(true);
+      await startScreenShareAPI({ userId: me, screenTrack: screenTrack.id });
+    } catch (error) {
+      console.error("Error starting screen share:", error);
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      setRecording(false);
+  const stopScreenShare = async () => {
+    try {
+      setScreenSharing(false);
+      const videoTrack = stream.getVideoTracks()[0];
+      connectionRef.current.replaceTrack(connectionRef.current.streams[0].getVideoTracks()[0], videoTrack, stream);
+      combinedStream.current.getVideoTracks().forEach((track) => {
+        if (track.kind === "video" && track.label.includes("screen")) {
+          combinedStream.current.removeTrack(track);
+          track.stop();
+        }
+      });
+      recordedStream.current.getVideoTracks().forEach((track) => {
+        if (track.kind === "video" && track.label.includes("screen")) {
+          recordedStream.current.removeTrack(track);
+          track.stop();
+        }
+      });
+
+      await stopScreenShareAPI({ userId: me, videoTrack: videoTrack.id });
+    } catch (error) {
+      console.error("Error stopping screen share:", error);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      if (recordedStream.current) {
+        const recorder = new MediaRecorder(recordedStream.current);
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            setRecordedChunks((prev) => [...prev, event.data]);
+          }
+        };
+        setMediaRecorder(recorder);
+        recorder.start();
+        setRecording(true);
+
+        await startRecordingAPI({ userId: me });
+      }
+    } catch (error) {
+      console.error("Error starting recording:", error);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+        setRecording(false);
+
+        await stopRecordingAPI({ userId: me });
+      }
+    } catch (error) {
+      console.error("Error stopping recording:", error);
     }
   };
 
@@ -223,61 +240,53 @@ function Videocall() {
           <div className="video">{callAccepted && !callEnded ? <video playsInline ref={userVideo} autoPlay style={{ width: "400px" }} /> : null}</div>
         </div>
         <div className="myId">
-  <TextField id="filled-basic" label="Name" variant="filled" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: "20px" }} />
-  {me ? (
-    <CopyToClipboard text={me} onCopy={handleCopy}>
-      <Button variant="contained" color="primary" startIcon={<AssignmentIcon fontSize="large" />}>
-        Copy ID
-      </Button>
-    </CopyToClipboard>
-  ) : (
-    <Button variant="contained" color="primary" disabled>
-      Please Refresh Once to Generate Id
-    </Button>
-  )}
-  <TextField id="filled-basic" label="ID to call" variant="filled" value={idToCall} onChange={(e) => setIdToCall(e.target.value)} />
-  <div className="call-button">
-    {callAccepted && !callEnded ? (
-      <Button variant="contained" color="secondary" onClick={leaveCall}>
-        End Call
-      </Button>
-    ) : (
-      <IconButton color="primary" aria-label="call" onClick={() => callUser(idToCall)} disabled={!isCallAllowed}>
-        <PhoneIcon fontSize="large" />
-      </IconButton>
-    )}
-  </div>
-</div>        {callAccepted && !callEnded && (
-          <>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<ScreenShareIcon />}
-              onClick={screenSharing ? stopScreenShare : startScreenShare}
-              style={{ marginTop: "20px", width: "150px" }}
-            >
-              {screenSharing ? "Stop Sharing" : "Share Screen"}
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<VideocamIcon />}
-              onClick={recording ? stopRecording : startRecording}
-              style={{ marginTop: "20px", width: "150px" }}
-            >
-              {recording ? "Stop Recording" : "Start Recording"}
-            </Button>
-          </>
-        )}
-        <div>
-          {receivingCall && !callAccepted ? (
-            <div className="caller">
-              <h1>{name} is calling...</h1>
-              <Button variant="contained" color="primary" onClick={answerCall}>
-                Answer
+          <TextField id="filled-basic" label="Name" variant="filled" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: "20px" }} />
+          {me ? (
+            <CopyToClipboard text={me} onCopy={handleCopy}>
+              <Button variant="contained" color="primary" startIcon={<AssignmentIcon fontSize="large" />}>
+                Copy ID
               </Button>
-            </div>
-          ) : null}
+            </CopyToClipboard>
+          ) : (
+            <Button variant="contained" color="primary" disabled>
+              Please Refresh Once to Generate Id
+            </Button>
+          )}
+          <TextField id="filled-basic" label="ID to call" variant="filled" value={idToCall} onChange={(e) => setIdToCall(e.target.value)} />
+          {isCallAllowed ? (
+            <>
+              {callAccepted && !callEnded ? (
+                <Button onClick={leaveCall} variant="contained" color="secondary" startIcon={<PhoneIcon />}>
+                  End Call
+                </Button>
+              ) : (
+                <Button onClick={() => callUser(idToCall)} variant="contained" color="primary" startIcon={<PhoneIcon />}>
+                  Call
+                </Button>
+              )}
+              {receivingCall && !callAccepted ? (
+                <Button onClick={answerCall} variant="contained" color="primary" startIcon={<PhoneIcon />}>
+                  Answer
+                </Button>
+              ) : null}
+              <div className="buttonGroup">
+                <IconButton onClick={startScreenShare} disabled={screenSharing || !callAccepted}>
+                  <ScreenShareIcon />
+                </IconButton>
+                <IconButton onClick={stopScreenShare} disabled={!screenSharing || !callAccepted}>
+                  <VideocamIcon />
+                </IconButton>
+                <IconButton onClick={startRecording} disabled={recording || !callAccepted}>
+                  <VideocamIcon /> {/* Updated to a valid icon */}
+                </IconButton>
+                <IconButton onClick={stopRecording} disabled={!recording || !callAccepted}>
+                  <StopIcon />
+                </IconButton>
+              </div>
+            </>
+          ) : (
+            <p>Video calls are allowed only between 6 PM and 12 AM.</p>
+          )}
         </div>
       </div>
     </>
