@@ -21,7 +21,7 @@ import {
   endCall as endCallAPI 
 } from "../../api/index"; 
 
-const socket = io.connect("https://youtube-clone-53sz.onrender.com");
+const socket = io.connect("https://internproject-yzv8.onrender.com/");
 
 function Videocall() {
   const [me, setMe] = useState("");
