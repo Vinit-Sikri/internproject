@@ -1,18 +1,9 @@
 import { Router } from 'express';
-import { 
-  initiateCall, 
-  answerCall, 
-  endCall, 
-  startScreenShare, 
-  stopScreenShare, 
-  startRecording, 
-  stopRecording 
-} from '../controllers/videoCallController.js'; // Adjust if necessary
+import { callUser , startScreenShare , stopScreenShare , startRecording , stopRecording , endCall} from '../controllers/videoCallController';
 
 const router = Router();
 
-router.post('/call', initiateCall);
-router.post('/answer', answerCall);
+router.post('/call', callUser);
 router.post('/end', endCall);
 router.post('/start-screen-share', startScreenShare);
 router.post('/stop-screen-share', stopScreenShare);

@@ -27,6 +27,7 @@ const createSocketServer = (app) => {
 
     // Handle call initiation
     socket.on("callUser", (data) => {
+      console.log("Server received callUser data:", data); // Debug log
       io.to(data.userToCall).emit("callUser", {
         signal: data.signalData,
         from: data.from,
@@ -37,6 +38,7 @@ const createSocketServer = (app) => {
 
     // Handle call acceptance
     socket.on("answerCall", (data) => {
+      console.log("Server received answerCall data:", data); // Debug log
       io.to(data.to).emit("callAccepted", {
         signal: data.signal,
         callId: data.callId, // Send the call ID
@@ -45,21 +47,25 @@ const createSocketServer = (app) => {
 
     // Handle start screen share
     socket.on("startScreenShare", (data) => {
+      console.log("Server received startScreenShare data:", data); // Debug log
       io.to(data.userId).emit("startScreenShare", data.screenTrack);
     });
 
     // Handle stop screen share
     socket.on("stopScreenShare", (data) => {
+      console.log("Server received stopScreenShare data:", data); // Debug log
       io.to(data.userId).emit("stopScreenShare", data.videoTrack);
     });
 
     // Handle start recording
     socket.on("startRecording", (data) => {
+      console.log("Server received startRecording data:", data); // Debug log
       io.to(data.userId).emit("startRecording");
     });
 
     // Handle stop recording
     socket.on("stopRecording", (data) => {
+      console.log("Server received stopRecording data:", data); // Debug log
       io.to(data.userId).emit("stopRecording");
     });
   });

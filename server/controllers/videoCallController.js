@@ -1,71 +1,115 @@
-import { io } from '../socket.js'; // Import your Socket.IO instance if needed
+import Peer from "simple-peer";
 
-// Controller to initiate a call
-export const initiateCall = (req, res) => {
-  const { userToCall, signalData, from, name } = req.body;
+
+// Call User Controller
+export const callUser = (socket, idToCall, stream, me, name, setCallAccepted, userVideo, combinedStream, recordedStream, connectionRef) => {
+  console.log("Initiating call to:", idToCall);
   
-  // Emit the call initiation to the specified user
-  io.to(userToCall).emit('callUser', { signal: signalData, from, name });
-  
-  res.status(200).json({ message: 'Call initiated' });
+  const peer = new Peer({
+    initiator: true,
+    trickle: false,
+    stream: stream,
+  });
+
+  peer.on("signal", (data) => {
+    console.log("Signal data before emitting:", data);
+    socket.emit("callUser", {
+      userToCall: idToCall,
+      signalData: data,
+      from: me,
+      name: name,
+    });
+  });
+
+  peer.on("stream", (userStream) => {
+    console.log("Received user stream");
+    if (userVideo.current) {
+      userVideo.current.srcObject = userStream;
+    }
+    userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
+    recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
+    recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
+  });
+
+  socket.on("callAccepted", (signal) => {
+    console.log("Call accepted signal:", signal);
+    setCallAccepted(true);
+    peer.signal(signal);
+  });
+
+  connectionRef.current = peer;
 };
 
-// Controller to answer a call
-export const answerCall = (req, res) => {
-  const { signal, to } = req.body;
-  
-  // Emit the call acceptance signal to the caller
-  io.to(to).emit('callAccepted', signal);
-  
-  res.status(200).json({ message: 'Call answered' });
+// Additional Controllers for Screen Sharing and Recording
+export const startScreenShare = async (socket, stream, connectionRef, setScreenSharing, startScreenShareAPI, me) => {
+  try {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ cursor: true });
+    setScreenSharing(true);
+    const screenTrack = screenStream.getTracks()[0];
+    connectionRef.current.replaceTrack(stream.getVideoTracks()[0], screenTrack, stream);
+    screenTrack.onended = () => {
+      stopScreenShare(socket, stream, connectionRef, setScreenSharing, stopScreenShareAPI, me);
+    };
+    stream.addTrack(screenTrack);
+    await startScreenShareAPI({ userId: me, screenTrack: screenTrack.id });
+  } catch (error) {
+    console.error("Error starting screen share:", error);
+  }
 };
 
-// Controller to end a call
-export const endCall = (req, res) => {
-  const { callId } = req.body;
-
-  // Notify all users that the call has ended
-  io.emit('callEnded', { callId });
-  
-  res.status(200).json({ message: 'Call ended' });
+export const stopScreenShare = async (socket, stream, connectionRef, setScreenSharing, stopScreenShareAPI, me) => {
+  try {
+    setScreenSharing(false);
+    const videoTrack = stream.getVideoTracks()[0];
+    connectionRef.current.replaceTrack(connectionRef.current.streams[0].getVideoTracks()[0], videoTrack, stream);
+    stream.getVideoTracks().forEach((track) => {
+      if (track.kind === "video" && track.label.includes("screen")) {
+        stream.removeTrack(track);
+        track.stop();
+      }
+    });
+    await stopScreenShareAPI({ userId: me, videoTrack: videoTrack.id });
+  } catch (error) {
+    console.error("Error stopping screen share:", error);
+  }
 };
 
-// Controller to start screen sharing
-export const startScreenShare = (req, res) => {
-  const { userId, screenTrack } = req.body;
-
-  // Replace the existing video track with the screen share track
-  io.to(userId).emit('screenShare', { screenTrack });
-
-  res.status(200).json({ message: 'Screen sharing started' });
+export const startRecording = async (setRecording, setMediaRecorder, recordedStream, startRecordingAPI, me) => {
+  try {
+    if (recordedStream) {
+      const recorder = new MediaRecorder(recordedStream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setRecordedChunks((prev) => [...prev, event.data]);
+        }
+      };
+      setMediaRecorder(recorder);
+      recorder.start();
+      setRecording(true);
+      await startRecordingAPI({ userId: me });
+    }
+  } catch (error) {
+    console.error("Error starting recording:", error);
+  }
 };
 
-// Controller to stop screen sharing
-export const stopScreenShare = (req, res) => {
-  const { userId, videoTrack } = req.body;
-
-  // Revert to the original video track
-  io.to(userId).emit('stopScreenShare', { videoTrack });
-
-  res.status(200).json({ message: 'Screen sharing stopped' });
+export const stopRecording = async (mediaRecorder, setRecording, stopRecordingAPI, me) => {
+  try {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setRecording(false);
+      await stopRecordingAPI({ userId: me });
+    }
+  } catch (error) {
+    console.error("Error stopping recording:", error);
+  }
 };
 
-// Controller to start recording
-export const startRecording = (req, res) => {
-  const { userId } = req.body;
-
-  // Notify the client to start recording
-  io.to(userId).emit('startRecording');
-
-  res.status(200).json({ message: 'Recording started' });
-};
-
-// Controller to stop recording
-export const stopRecording = (req, res) => {
-  const { userId } = req.body;
-
-  // Notify the client to stop recording
-  io.to(userId).emit('stopRecording');
-
-  res.status(200).json({ message: 'Recording stopped' });
+export const endCall = async (socket, me, endCallAPI) => {
+  try {
+    socket.emit("endCall", { userId: me });
+    await endCallAPI({ userId: me });
+  } catch (error) {
+    console.error("Error ending call:", error);
+  }
 };
