@@ -19,9 +19,19 @@ app.use('/uploads', express.static(path.join('uploads')));
 
 const { server, io } = createSocketServer(app);
 
+// Route to get a unique user ID
+app.get('/getUserId', (req, res) => {
+  const generateRandomId = () => {
+    return Math.floor(1000000000 + Math.random() * 9000000000).toString(); // Generates a 10-digit number
+  };
+  const userId = generateRandomId();
+  res.json({ id: userId });
+});
+
 app.get('/', (req, res) => {
   res.send('hello');
 });
+
 app.use(bodyParser.json());
 
 app.use('/user', userRoutes);

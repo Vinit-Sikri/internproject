@@ -1,6 +1,11 @@
 import http from 'http';
 import { Server } from 'socket.io';
 
+// Function to generate a random 10-digit ID
+const generateRandomId = () => {
+  return Math.floor(1000000000 + Math.random() * 9000000000).toString(); // Generates a 10-digit number
+};
+
 const createSocketServer = (app) => {
   const server = http.createServer(app);
   const io = new Server(server, {
@@ -11,8 +16,9 @@ const createSocketServer = (app) => {
   });
 
   io.on("connection", (socket) => {
-    // Emit a unique ID to the connected client
-    socket.emit("me", socket.id);
+    // Generate and emit a unique 10-digit ID to the connected client
+    const callId = generateRandomId(); // Generate a 10-digit ID
+    socket.emit("me", { id: socket.id, callId });
 
     // Handle disconnection
     socket.on("disconnect", () => {
@@ -21,12 +27,20 @@ const createSocketServer = (app) => {
 
     // Handle call initiation
     socket.on("callUser", (data) => {
-      io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
+      io.to(data.userToCall).emit("callUser", {
+        signal: data.signalData,
+        from: data.from,
+        name: data.name,
+        callId: data.callId, // Send the call ID
+      });
     });
 
     // Handle call acceptance
     socket.on("answerCall", (data) => {
-      io.to(data.to).emit("callAccepted", data.signal);
+      io.to(data.to).emit("callAccepted", {
+        signal: data.signal,
+        callId: data.callId, // Send the call ID
+      });
     });
 
     // Handle start screen share
