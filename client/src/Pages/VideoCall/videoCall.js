@@ -8,11 +8,11 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import StopIcon from "@mui/icons-material/Stop";
+//import StopIcon from "@mui/icons-material/Stop";
 import Peer from "simple-peer";
 import "./videoCall.css"
 
-const socket = io.connect("http://localhost:5000/");
+const socket = io.connect("https://internproject-yzv8.onrender.com/");
 
 function Videocall() {
   const [me, setMe] = useState("");
