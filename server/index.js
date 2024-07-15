@@ -12,6 +12,14 @@ import createSocketServer from "./socket.js"; // Corrected import
 
 dotenv.config();
 
+function generateRandom10DigitNumber() {
+  return Math.floor(1000000000 + Math.random() * 9000000000);
+}
+
+const random10DigitNumber = generateRandom10DigitNumber();
+console.log(random10DigitNumber);
+
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "30mb", extended: true }));
@@ -26,6 +34,18 @@ const { server, io } = createSocketServer(app);
 app.get('/', (req, res) => {
   res.send("Hello");
 });
+
+app.get('/getId',(req,res)=>{
+  function generateRandom10DigitNumber() {
+    return Math.floor(1000000000 + Math.random() * 9000000000);
+  }
+  
+  const random10DigitNumber = generateRandom10DigitNumber();
+  res.json({ number: randomNumber });
+  console.log(random10DigitNumber);
+})
+
+
 app.use(bodyParser.json());
 
 app.use('/user', userRoutes);

@@ -44,3 +44,14 @@ export const stopScreenShare = (data) => API.post("/videoCall/stop-screen-share"
 export const startRecording = (data) => API.post("/videoCall/start-recording", data);
 export const stopRecording = (data) => API.post("/videoCall/stop-recording", data);
 
+async function fetchRandom10DigitNumber() {
+  try{
+  const response = await axios.get('https://internproject-yzv8.onrender.com/getId');
+  const number = response.data.number;
+  console.log('Random 10-digit number:', number);
+  }
+ catch (error) {
+  console.error('Error fetching the number:', error);
+}
+}
+
