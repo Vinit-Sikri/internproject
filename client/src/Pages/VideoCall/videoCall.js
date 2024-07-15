@@ -8,11 +8,8 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import VideocamIcon from "@mui/icons-material/Videocam";
-//import StopIcon from "@mui/icons-material/Stop";
 import Peer from "simple-peer";
-import "./videoCall.css"
-
-const socket = io.connect("https://internproject-yzv8.onrender.com/");
+import "./videoCall.css";
 
 function Videocall() {
   const [me, setMe] = useState("");
@@ -34,8 +31,12 @@ function Videocall() {
   const connectionRef = useRef();
   const combinedStream = useRef(new MediaStream());
   const recordedStream = useRef(new MediaStream());
+  const socket = useRef();
 
   useEffect(() => {
+    // Set up the socket connection
+    socket.current = io.connect("https://internproject-yzv8.onrender.com/");
+    
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
       setStream(stream);
       if (myVideo.current) {
@@ -45,26 +46,27 @@ function Videocall() {
       stream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
     });
 
-    socket.on("me", (id) => {
+    socket.current.on("me", (id) => {
+      console.log("Id sent from socket");
       setMe(id);
     });
 
-    socket.on("callUser", (data) => {
+    socket.current.on("callUser", (data) => {
       setReceivingCall(true);
       setCaller(data.from);
       setName(data.name);
       setCallerSignal(data.signal);
+      console.log("call from socket");
     });
 
     const checkCallAvailability = () => {
       const now = new Date();
       const hours = now.getHours();
-      setIsCallAllowed(hours >= 18 || hours < 18);
+      setIsCallAllowed(hours >= 18 || hours < 6);
     };
 
     checkCallAvailability();
     const interval = setInterval(checkCallAvailability, 60000); // Check every minute
-
     return () => clearInterval(interval);
   }, []);
 
@@ -75,7 +77,7 @@ function Videocall() {
       stream: stream,
     });
     peer.on("signal", (data) => {
-      socket.emit("callUser", {
+      socket.current.emit("callUser", {
         userToCall: id,
         signalData: data,
         from: me,
@@ -86,13 +88,11 @@ function Videocall() {
       if (userVideo.current) {
         userVideo.current.srcObject = userStream;
       }
-      // Add remote video and audio to the combined stream
       userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
-      // Create a new MediaStream for recording
       recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
       recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
     });
-    socket.on("callAccepted", (signal) => {
+    socket.current.on("callAccepted", (signal) => {
       setCallAccepted(true);
       peer.signal(signal);
     });
@@ -102,28 +102,26 @@ function Videocall() {
 
   const answerCall = () => {
     setCallAccepted(true);
+    console.log("ans from socket");
     const peer = new Peer({
       initiator: false,
       trickle: false,
       stream: stream,
     });
     peer.on("signal", (data) => {
-      socket.emit("answerCall", { signal: data, to: caller });
+      socket.current.emit("answerCall", { signal: data, to: caller });
     });
     peer.on("stream", (userStream) => {
       if (userVideo.current) {
         userVideo.current.srcObject = userStream;
       }
-      // Add remote video and audio to the combined stream
       userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
-      // Create a new MediaStream for recording
       recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
       recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
     });
-
     peer.signal(callerSignal);
     connectionRef.current = peer;
-};
+  };
 
   const leaveCall = () => {
     setCallEnded(true);

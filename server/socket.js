@@ -14,6 +14,7 @@ const createSocketServer = (app) => {
   io.on("connection", (socket) => {
     socket.emit("me", socket.id);
 
+
     socket.on("disconnect", () => {
       socket.broadcast.emit("callEnded");
     });
@@ -24,6 +25,7 @@ const createSocketServer = (app) => {
 
     socket.on("answerCall", (data) => {
       io.to(data.to).emit("callAccepted", data.signal);
+
     });
 
     socket.on("startScreenShare", (data) => {
