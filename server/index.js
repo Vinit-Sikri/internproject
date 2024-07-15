@@ -40,9 +40,9 @@ app.get('/getId',(req,res)=>{
     return Math.floor(1000000000 + Math.random() * 9000000000);
   }
   
-  const random10DigitNumber = generateRandom10DigitNumber();
+  const randomNumber = generateRandom10DigitNumber();
   res.json({ number: randomNumber });
-  console.log(random10DigitNumber);
+  console.log(randomNumber);
 })
 
 
