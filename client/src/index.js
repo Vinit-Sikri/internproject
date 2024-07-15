@@ -9,6 +9,11 @@ import { createStore } from 'redux';
 import thunk from "redux-thunk";
 import Reducers from "./Reducers";
 import { PointsProvider } from "./context/pointsContext";
+import { Buffer } from 'buffer';
+import process from 'process';
+
+window.Buffer = window.Buffer || Buffer;
+window.process = process;
 
 const store = createStore(Reducers, compose(applyMiddleware(thunk)));
 

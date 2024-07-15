@@ -39,6 +39,11 @@
 	color: #fff;
 }
 
+.end-call-btn{
+	background-color: red;
+	color: red;
+}
+
 body {
 	background-color:rgb(33, 33, 33);/* fallback for old browsers */
 }

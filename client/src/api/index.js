@@ -44,5 +44,3 @@ export const stopScreenShare = (data) => API.post("/videoCall/stop-screen-share"
 export const startRecording = (data) => API.post("/videoCall/start-recording", data);
 export const stopRecording = (data) => API.post("/videoCall/stop-recording", data);
 
-
-export const fetchCallId = () => API.get("/getUserId");

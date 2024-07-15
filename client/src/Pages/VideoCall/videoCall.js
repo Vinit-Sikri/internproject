@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import Peer from "simple-peer";
 import io from "socket.io-client";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -10,10 +9,10 @@ import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import StopIcon from "@mui/icons-material/Stop";
-import { initiateCall , answerCall , endCall , startScreenShare , stopScreenShare , startRecording , stopRecording , fetchCallId} from "../../api";
-import "./videoCall.css";
+import Peer from "simple-peer";
+import "./videoCall.css"
 
-const socket = io.connect("https://internproject-yzv8.onrender.com/");
+const socket = io.connect("http://localhost:5000/");
 
 function Videocall() {
   const [me, setMe] = useState("");
@@ -30,7 +29,6 @@ function Videocall() {
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recordedChunks, setRecordedChunks] = useState([]);
-
   const myVideo = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
@@ -43,6 +41,7 @@ function Videocall() {
       if (myVideo.current) {
         myVideo.current.srcObject = stream;
       }
+      // Add local video and audio to the combined stream
       stream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
     });
 
@@ -51,8 +50,6 @@ function Videocall() {
     });
 
     socket.on("callUser", (data) => {
-      console.log("Receiving call from:", data.from);
-      console.log("Signal data:", data.signal);
       setReceivingCall(true);
       setCaller(data.from);
       setName(data.name);
@@ -71,86 +68,150 @@ function Videocall() {
     return () => clearInterval(interval);
   }, []);
 
-  
-  const handleCopy = () => {
-    console.log("ID copied to clipboard: ", me);
-  };
-
-  const leaveCall = () => {
-    setCallEnded(true);
-    connectionRef.current.destroy();
-  };
-
-
-  useEffect(() => {
-    const fetchId = async () => {
-      try {
-        const response = await fetchCallId();
-        console.log("API Response:", response.data); // Check the structure
-        if (response.data) {
-          setMe(response.data.id); // Adjust based on actual response structure
-          setIdToCall(response.data.id);
-        }
-      } catch (error) {
-        console.error("Error fetching call ID:", error);
+  const callUser = (id) => {
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream: stream,
+    });
+    peer.on("signal", (data) => {
+      socket.emit("callUser", {
+        userToCall: id,
+        signalData: data,
+        from: me,
+        name: name,
+      });
+    });
+    peer.on("stream", (userStream) => {
+      if (userVideo.current) {
+        userVideo.current.srcObject = userStream;
       }
-    };
-    fetchId();
-  }, []);
+      // Add remote video and audio to the combined stream
+      userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
+      // Create a new MediaStream for recording
+      recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
+      recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
+    });
+    socket.on("callAccepted", (signal) => {
+      setCallAccepted(true);
+      peer.signal(signal);
+    });
 
-  const handleCallUser = () => {
-    initiateCall(socket, idToCall, stream, me, name, setCallAccepted, userVideo, combinedStream, recordedStream, connectionRef);
+    connectionRef.current = peer;
   };
 
-  const handleAnswerCall = () => {
+  const answerCall = () => {
     setCallAccepted(true);
     const peer = new Peer({
       initiator: false,
       trickle: false,
       stream: stream,
     });
-
     peer.on("signal", (data) => {
-      console.log("Answering call with signal data:", data);
       socket.emit("answerCall", { signal: data, to: caller });
     });
-
     peer.on("stream", (userStream) => {
       if (userVideo.current) {
         userVideo.current.srcObject = userStream;
       }
+      // Add remote video and audio to the combined stream
       userStream.getTracks().forEach((track) => combinedStream.current.addTrack(track));
+      // Create a new MediaStream for recording
       recordedStream.current.addTrack(userStream.getVideoTracks()[0]);
       recordedStream.current.addTrack(userStream.getAudioTracks()[0]);
     });
 
     peer.signal(callerSignal);
     connectionRef.current = peer;
-  };
+};
 
-  const handleEndCall = () => {
-    endCall(socket, me, endCall);
+  const leaveCall = () => {
     setCallEnded(true);
-    setCallAccepted(false);
-    setReceivingCall(false);
     connectionRef.current.destroy();
   };
 
-  const handleStartScreenShare = () => {
-    startScreenShare(socket, stream, connectionRef, setScreenSharing, startScreenShare, me);
+  const handleCopy = () => {
+    console.log("ID copied to clipboard: ", me);
   };
 
-  const handleStopScreenShare = () => {
-    stopScreenShare(socket, stream, connectionRef, setScreenSharing, stopScreenShare, me);
+  const startScreenShare = () => {
+    navigator.mediaDevices.getDisplayMedia({ cursor: true }).then((screenStream) => {
+      setScreenSharing(true);
+      const screenTrack = screenStream.getTracks()[0];
+      connectionRef.current.replaceTrack(
+        stream.getVideoTracks()[0],
+        screenTrack,
+        stream
+      );
+      screenTrack.onended = () => {
+        stopScreenShare();
+      };
+      // Add screen share video to the combined stream
+      combinedStream.current.addTrack(screenTrack);
+      recordedStream.current.addTrack(screenTrack);
+    });
   };
 
-  const handleStartRecording = () => {
-    startRecording(setRecording, setMediaRecorder, recordedStream, startRecording, me);
+  const stopScreenShare = () => {
+    setScreenSharing(false);
+    const videoTrack = stream.getVideoTracks()[0];
+    connectionRef.current.replaceTrack(
+      connectionRef.current.streams[0].getVideoTracks()[0],
+      videoTrack,
+      stream
+    );
+    // Remove screen share video from the combined stream
+    combinedStream.current.getVideoTracks().forEach((track) => {
+      if (track.kind === "video" && track.label.includes("screen")) {
+        combinedStream.current.removeTrack(track);
+        track.stop();
+      }
+    });
+    recordedStream.current.getVideoTracks().forEach((track) => {
+      if (track.kind === "video" && track.label.includes("screen")) {
+        recordedStream.current.removeTrack(track);
+        track.stop();
+      }
+    });
   };
 
-  const handleStopRecording = () => {
-    stopRecording(mediaRecorder, setRecording, stopRecording, me);
+  const startRecording = () => {
+    if (recordedStream.current) {
+      const recorder = new MediaRecorder(recordedStream.current);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setRecordedChunks((prev) => [...prev, event.data]);
+        }
+      };
+      setMediaRecorder(recorder);
+      recorder.start();
+      setRecording(true);
+    }
   };
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setRecording(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!recording && recordedChunks.length > 0) {
+      const blob = new Blob(recordedChunks, {
+        type: "video/webm",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = "recording.webm";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setRecordedChunks([]);
+    }
+  }, [recording, recordedChunks]);
 
   return (
     <>
@@ -171,11 +232,11 @@ function Videocall() {
           <TextField id="filled-basic" label="ID to call" variant="filled" value={idToCall} onChange={(e) => setIdToCall(e.target.value)} />
           <div className="call-button">
             {callAccepted && !callEnded ? (
-              <Button variant="contained" color="secondary" onClick={leaveCall}>
+              <Button variant="contained" className="end-call-btn" onClick={leaveCall}>
                 End Call
               </Button>
             ) : (
-              <IconButton color="primary" aria-label="call" onClick={() => initiateCall(idToCall)} disabled={!isCallAllowed}>
+              <IconButton color="primary" aria-label="call" onClick={() => callUser(idToCall)} disabled={!isCallAllowed}>
                 <PhoneIcon fontSize="large" />
               </IconButton>
             )}
@@ -217,6 +278,5 @@ function Videocall() {
     </>
   );
 }
-
 
 export default Videocall;
