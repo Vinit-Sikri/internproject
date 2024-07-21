@@ -22,7 +22,7 @@ function Navbar({ toggleDrawer, setEditCreateChanelBtn }) {
   useEffect(() => {
     function start() {
       gapi.client.init({
-        clientId: "341537644426-f3v9od7ndhf0a9a2nsj0pe65rl9kk168.apps.googleusercontent.com",
+        clientId: "293722243460-n259uoksssp7r7i8i29rvs4cdh45nm72.apps.googleusercontent.com",
         scope: "email",
       });
     }
