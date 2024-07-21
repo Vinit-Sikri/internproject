@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { GoogleLogout } from "react-google-login";
 import { BiLogOut } from "react-icons/bi";
 import { Link } from "react-router-dom";
@@ -6,11 +6,11 @@ import { setCurrentUser } from "../../actions/currentUser";
 import "./Auth.css";
 
 // import { getPoints } from "../../actions/Points";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch} from "react-redux";
 
 function Auth({ User, setAuthBtn, setEditCreateChanelBtn }) {
   // const points = useSelector((state) => state.pointsReducer.points);
-  const CurrentUser = useSelector((state) => state.currentUserReducer);
+  //const CurrentUser = useSelector((state) => state.currentUserReducer);
 
   const dispatch = useDispatch();
 
