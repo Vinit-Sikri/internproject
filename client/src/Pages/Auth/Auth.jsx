@@ -4,11 +4,12 @@ import { BiLogOut } from "react-icons/bi";
 import { Link } from "react-router-dom";
 import { setCurrentUser } from "../../actions/currentUser";
 import "./Auth.css";
-import { getPoints } from "../../actions/Points";
+
+// import { getPoints } from "../../actions/Points";
 import { useDispatch, useSelector } from "react-redux";
 
 function Auth({ User, setAuthBtn, setEditCreateChanelBtn }) {
-  const points = useSelector((state) => state.pointsReducer.points);
+  // const points = useSelector((state) => state.pointsReducer.points);
   const CurrentUser = useSelector((state) => state.currentUserReducer);
 
   const dispatch = useDispatch();
@@ -18,11 +19,11 @@ function Auth({ User, setAuthBtn, setEditCreateChanelBtn }) {
     alert("Log Out Successfully");
   };
 
-  useEffect(() => {
-    if (CurrentUser?.result?._id) {
-      dispatch(getPoints(CurrentUser.result._id)); 
-    }
-  }, [dispatch, CurrentUser]); 
+  // useEffect(() => {
+  //   if (CurrentUser?.result?._id) {
+  //     dispatch(getPoints(CurrentUser.result._id)); 
+  //   }
+  // }, [dispatch, CurrentUser]); 
 
   return (
     <div className="Auth_container" onClick={() => setAuthBtn(false)}>
@@ -45,7 +46,7 @@ function Auth({ User, setAuthBtn, setEditCreateChanelBtn }) {
               <Link to={`/chanel/${User?.result._id}`} className="btn_Auth">
                 Your Chanel
               </Link>
-              <span><b>Points: {typeof points === 'number' ? points : 'Loading...'}</b></span>
+              {/* <span><b>Points: {typeof points === 'number' ? points : 'Loading...'}</b></span> */}
             </>
           ) : (
             <>
@@ -61,7 +62,7 @@ function Auth({ User, setAuthBtn, setEditCreateChanelBtn }) {
           )}
           <div>
             <GoogleLogout
-              clientId="341537644426-f3v9od7ndhf0a9a2nsj0pe65rl9kk168.apps.googleusercontent.com"
+              clientId="293722243460-n259uoksssp7r7i8i29rvs4cdh45nm72.apps.googleusercontent.com"
               onLogoutSuccess={onLogOutSuccess}
               render={(renderProps) => (
                 <div onClick={renderProps.onClick} className="btn_Auth">
