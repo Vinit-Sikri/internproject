@@ -54,7 +54,7 @@ function Navbar({ toggleDrawer, setEditCreateChanelBtn }) {
     };
 
     checkCallAvailability();
-    const interval = setInterval(checkCallAvailability, 60000); // Check every minute
+    const interval = setInterval(checkCallAvailability, 60000); 
 
     return () => clearInterval(interval);
   }, []);
