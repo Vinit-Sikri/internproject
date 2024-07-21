@@ -63,7 +63,7 @@ const VideoPlayer = ({ className, src, onShowComments, onNextVideo, onCloseWebsi
   const [tapCount, setTapCount] = useState(0);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
-  const timerRef = useRef(null);
+  //const timerRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {

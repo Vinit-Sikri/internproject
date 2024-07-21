@@ -10,6 +10,8 @@ import { viewVideo } from "../../actions/video";
 import { updatePoints } from "../../actions/Points";
 import { useNavigate } from "react-router-dom";
 import VideoPlayer from "../../Components/VideoPlayer/VideoPlayer";
+import {useCallback} from 'react'
+
 function VideoPage() {
   const { vid } = useParams();
   const vids = useSelector((state) => state.videoReducer);
@@ -24,21 +26,25 @@ function VideoPage() {
   const nextVideo = vids.data[nextVideoIndex];
   const navigate = useNavigate();
 
-  const handleHistory = () => {
+
+  const handleHistory = useCallback(() => {
     dispatch(
       addToHistory({
         videoId: vid,
         Viewer: CurrentUser?.result._id,
       })
     );
-  };
-  const handleViews = () => {
+  }, [dispatch, vid, CurrentUser]);
+
+  const handleViews = useCallback(() => {
     dispatch(
       viewVideo({
         id: vid,
       })
     );
-  };
+  }, [dispatch, vid]);
+
+
   useEffect(() => {
     if (CurrentUser) {
       handleHistory();
@@ -48,7 +54,7 @@ function VideoPage() {
         setPointsUpdated(true);
       }
     }
-  }, [CurrentUser, vid, dispatch, pointsUpdated]);
+  }, [CurrentUser, vid, dispatch, pointsUpdated,handleHistory,handleViews]);
   const handleNextVideo = () => {
     if (nextVideo) {
       navigate(`/videopage/${nextVideo._id}`);
