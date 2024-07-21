@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import Comments from "../../Components/Comments/Comments";
 import { useDispatch, useSelector } from "react-redux";
@@ -9,7 +9,7 @@ import { addToHistory } from "../../actions/History";
 import { viewVideo } from "../../actions/video";
 import { updatePoints } from "../../actions/Points";
 import { useNavigate } from "react-router-dom";
-
+import VideoPlayer from "../../Components/VideoPlayer/VideoPlayer";
 function VideoPage() {
   const { vid } = useParams();
   const vids = useSelector((state) => state.videoReducer);
@@ -17,31 +17,28 @@ function VideoPage() {
   const dispatch = useDispatch();
   const CurrentUser = useSelector((state) => state?.currentUserReducer);
   const [pointsUpdated, setPointsUpdated] = useState(false);
-  const videoRef = useRef(null);
+  // const videoRef = useRef(null);
   const commentSectionRef = useRef(null);
+  const currentVideoIndex = vids.data.findIndex((q) => q._id === vid);
+  const nextVideoIndex = currentVideoIndex + 2;
+  const nextVideo = vids.data[nextVideoIndex];
   const navigate = useNavigate();
 
-  const currentVideoIndex = vids.data.findIndex((q) => q._id === vid);
-  const nextVideoIndex = (currentVideoIndex + 1) % vids.data.length;
-  const nextVideo = vids.data[nextVideoIndex];
-
-  const handleHistory = useCallback(() => {
+  const handleHistory = () => {
     dispatch(
       addToHistory({
         videoId: vid,
         Viewer: CurrentUser?.result._id,
       })
     );
-  }, [dispatch, vid, CurrentUser?.result._id]);
-
-  const handleViews = useCallback(() => {
+  };
+  const handleViews = () => {
     dispatch(
       viewVideo({
         id: vid,
       })
     );
-  }, [dispatch, vid]);
-
+  };
   useEffect(() => {
     if (CurrentUser) {
       handleHistory();
@@ -51,83 +48,39 @@ function VideoPage() {
         setPointsUpdated(true);
       }
     }
-  }, [CurrentUser, vid, dispatch, pointsUpdated, handleHistory, handleViews]);
+  }, [CurrentUser, vid, dispatch, pointsUpdated]);
+  const handleNextVideo = () => {
+    if (nextVideo) {
+      navigate(`/videopage/${nextVideo._id}`);
 
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.shiftKey) {
-        if (event.key === ">") {
-          videoRef.current.playbackRate += 0.5;
-        } else if (event.key === "<") {
-          videoRef.current.playbackRate = Math.max(0.5, videoRef.current.playbackRate - 0.5);
-        } else if (event.key === "G") {
-          window.location.href = "https://www.google.com";
-          event.preventDefault();
-        }
-      } else {
-        if (event.key === "ArrowRight") {
-          videoRef.current.currentTime += 10;
-        } else if (event.key === "ArrowLeft") {
-          videoRef.current.currentTime -= 10;
-        } else if (event.key === "c") {
-          commentSectionRef.current.focus();
-        } else if (event.key === "x") {
-          alert("Window cannot be closed due to current browser settings");
-        } else if (event.key === "l") {
-          navigator.geolocation.getCurrentPosition((position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const appid = "b6d38f62792ecb88f2a826edd4764185";
-            fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${appid}`)
-              .then(response => {
-                if (response.ok) {
-                  return response.json();
-                } else {
-                  throw new Error(response.statusText);
-                }
-              })
-              .then(data => {
-                const location = data.name;
-                let temp = '';
-                if (data.main) {
-                  temp = (data.main.temp - 273.15).toFixed(2);
-                } else {
-                  temp = 'Unknown';
-                }
-                alert(`You are currently in ${location} and the temperature is ${temp}°C`);
-              })
-              .catch(error => {
-                if (error.message === "Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.") {
-                  alert("Error: Invalid API key. Please check your API key and try again.");
-                } else {
-                  alert("Error: " + error.message);
-                }
-              });
-          });
-        } else if (event.key === "n") {
-          if (nextVideo) {
-            navigate(`/videopage/${nextVideo._id}`);
-          }
-        }
-      }
-    };
+    }
+  };
+  const handleShowComments = () => {
+    commentSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [videoRef, commentSectionRef, vids, navigate, currentVideoIndex, nextVideo]);
+  const handleCloseWebsite = () => {
+    window.open('https://google.com', '_self');
+  };
 
+ 
   return (
     <>
       <div className="container_videoPage">
         <div className="container2_videoPage">
           <div className="video_display_screen_videoPage">
-            <video
+            {/* <video
               ref={videoRef}
-              src={`https://internproject-yzv8.onrender.com/${vv?.filePath}`}
+              src={http://localhost:5500/${vv?.filePath}}
               className={"video_ShowVideo_videoPage"}
               controls
+            /> */}
+              <VideoPlayer
+              src={`https://internproject-yzv8.onrender.com/${vv?.filePath}`}
+              className={"video_ShowVideo_videoPage"}
+              onShowComments={handleShowComments}
+              onNextVideo={handleNextVideo}
+              onCloseWebsite={handleCloseWebsite}
             />
             <div className="video_details_videoPage">
               <div className="video_btns_title_VideoPage_cont">
@@ -149,9 +102,13 @@ function VideoPage() {
                 </b>
                 <p className="chanel_name_videoPage">{vv?.Uploder}</p>
               </Link>
-              <div className="comments_VideoPage" tabIndex={0} ref={commentSectionRef}>
+              <div
+                className="comments_VideoPage"
+                tabIndex={0}
+                ref={commentSectionRef}
+              >
                 <h2>
-                  <u>Comments</u>
+                  <u>Coments</u>
                 </h2>
                 <Comments videoId={vv._id} />
               </div>
